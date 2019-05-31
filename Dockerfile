@@ -1,16 +1,17 @@
 ### BASE IMAGE ###
-FROM      ruby:2.5.5 as builder
+FROM      fluent/fluentd:v1.4-1 as builder
 
-RUN       mkdir /install
-WORKDIR   /install
+USER      root
 
-COPY      Gemfile /Gemfile.lock
+COPY      Gemfile /Gemfile
+
 RUN       set -ex ;\
-          apt-get update ;\
-          apt-get install -y build-essential libpq-dev ;\
-          gem install bundler
-RUN       bundle install --path=/install --gemfile=/Gemfile.lock
+          apk add --no-cache --update --virtual .build-deps \
+            build-base ruby-dev ;\
+          gem install bundler ;\
+          bundle install --no-cache --gemfile=/Gemfile ;\
+          gem sources --clear-all ;\
+          apk del .build-deps ;\
+          rm -rf /home/fluent/.gem/ruby/2.5.0/cache/*.gem
 
-### IMAGE ###
-FROM      fluent/fluentd:v1.4-1
-COPY      --from=builder /install /usr/local
+USER fluent
